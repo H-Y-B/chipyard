@@ -45,6 +45,13 @@ trait HasGCDIO extends BaseModule {
   val io = IO(new GCDIO(w))
 }
 
+
+
+
+
+
+
+
 // DOC include start: GCD blackbox
 class GCDMMIOBlackBox(val w: Int) extends BlackBox(Map("WIDTH" -> IntParam(w))) with HasBlackBoxResource
   with HasGCDIO
@@ -90,8 +97,14 @@ class GCDMMIOChiselModule(val w: Int) extends Module
 }
 // DOC include end: GCD chisel
 
-// DOC include start: GCD instance regmap
 
+
+
+
+
+
+
+// DOC include start: GCD instance regmap
 trait GCDModule extends HasRegMap {
   val io: GCDTopIO
 
@@ -151,10 +164,19 @@ class GCDTL(params: GCDParams, beatBytes: Int)(implicit p: Parameters)
 class GCDAXI4(params: GCDParams, beatBytes: Int)(implicit p: Parameters)
   extends AXI4RegisterRouter(
     params.address,
-    beatBytes=beatBytes)(
-      new AXI4RegBundle(params, _) with GCDTopIO)(
+    beatBytes=beatBytes)( 
+      new AXI4RegBundle(params, _) with GCDTopIO)( 
       new AXI4RegModule(params, _, _) with GCDModule)
 // DOC include end: GCD router
+
+
+
+
+
+
+
+
+
 
 // DOC include start: GCD lazy trait
 trait CanHavePeripheryGCD { this: BaseSubsystem =>
@@ -196,8 +218,21 @@ trait CanHavePeripheryGCDModuleImp extends LazyModuleImp {
     case None => None
   }
 }
-
 // DOC include end: GCD imp trait
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // DOC include start: GCD config fragment
