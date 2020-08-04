@@ -69,12 +69,14 @@ class MegaBoomConfig extends Config(
   new chipyard.iobinders.WithBlackBoxSimMem ++
   new chipyard.iobinders.WithTiedOffDebug ++
   new chipyard.iobinders.WithSimSerial ++
+  new chipyard.iobinders.WithTieOffL2FBusAXI ++ // Tie-off the incoming MMIO port
+  new chipyard.iobinders.WithSimAXIMMIO ++ // Attach a simulated memory to the outwards MMIO port
   new testchipip.WithTSI ++
   new chipyard.config.WithBootROM ++
   new chipyard.config.WithUART ++
   new chipyard.config.WithL2TLBs(1024) ++
-  new freechips.rocketchip.subsystem.WithNoMMIOPort ++
-  new freechips.rocketchip.subsystem.WithNoSlavePort ++
+  //new freechips.rocketchip.subsystem.WithNoMMIOPort ++
+  //new freechips.rocketchip.subsystem.WithNoSlavePort ++
   new freechips.rocketchip.subsystem.WithInclusiveCache ++
   new freechips.rocketchip.subsystem.WithNExtTopInterrupts(0) ++
   new boom.common.WithMegaBooms ++                              // mega boom config

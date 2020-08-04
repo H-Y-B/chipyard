@@ -9,7 +9,7 @@ import freechips.rocketchip.diplomacy.{LazyModule}
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.system.{SimAXIMem}
-import freechips.rocketchip.amba.axi4.{AXI4Bundle, AXI4SlaveNode, AXI4EdgeParameters}
+import freechips.rocketchip.amba.axi4.{AXI4Bundle, AXI4SlaveNode, AXI4MasterNode,AXI4EdgeParameters}
 import freechips.rocketchip.util._
 
 import sifive.blocks.devices.gpio._
@@ -191,7 +191,15 @@ object AddIOCells {
       (port, edge, ios)
     }}
   }
-
+  def axi4(io: Seq[AXI4Bundle], node: AXI4MasterNode): Seq[(AXI4Bundle, AXI4EdgeParameters, Seq[IOCell])] = {
+    io.zip(node.out).map{ case (mem_axi4, (_, edge)) => {
+      //val (port, ios) = IOCell.generateIOFromSignal(mem_axi4, Some("iocell_mem_axi4"))
+      val port=IO(Flipped(AXI4Bundle(edge.bundle)))
+      val ios =IOCell.generateFromSignal(mem_axi4,port,Some("iocell_hyb_mmio_axi4"))
+      port.suggestName("hyb_mmio_axi4")
+      (port, edge, ios)
+    }}
+  }
   def blockDev(bdev: BlockDeviceIO): (BlockDeviceIO, Seq[IOCell]) = {
     val (port, ios) = IOCell.generateIOFromSignal(bdev, Some("iocell_bdev"))
     port.suggestName("bdev")
@@ -296,8 +304,24 @@ class WithBlackBoxSimMem extends OverrideIOBinder({
   }
 })
 
+//class WithSimAXIMMIO extends OverrideIOBinder({
+//  (system: CanHaveMasterAXI4MMIOPort with BaseSubsystem) => SimAXIMem.connectMMIO(system)(system.p); Nil
+//})
 class WithSimAXIMMIO extends OverrideIOBinder({
-  (system: CanHaveMasterAXI4MMIOPort with BaseSubsystem) => SimAXIMem.connectMMIO(system)(system.p); Nil
+  (system: CanHaveMasterAXI4MMIOPort with BaseSubsystem) => {
+
+    val peiTuples = AddIOCells.axi4(system.mmio_axi4, system.mmioAXI4Node)
+    val harnessFn = (th: chipyard.TestHarness) => {
+       peiTuples.zipWithIndex.map { case ((port, edge, ios), i) =>
+         val mmio_mem = LazyModule(new SimAXIMem(edge, size = 4096)(system.p))
+         Module(mmio_mem.module).suggestName(s"mmio_mem_${i}")
+         mmio_mem.io_axi4.head <> port
+       }
+       Nil
+     }
+     Seq((peiTuples.map(_._1), peiTuples.flatMap(_._3), Some(harnessFn)))
+
+  }
 })
 
 class WithDontTouchPorts extends OverrideIOBinder({
@@ -313,24 +337,41 @@ class WithTieOffInterrupts extends OverrideIOBinder({
   }
 })
 
+//class WithTieOffL2FBusAXI extends OverrideIOBinder({
+//  (system: CanHaveSlaveAXI4Port with BaseSubsystem) => {
+//    system.l2_frontend_bus_axi4.foreach(axi => {
+//      axi.tieoff()
+//      experimental.DataMirror.directionOf(axi.ar.ready) match {
+//        case ActualDirection.Input =>
+//          axi.r.bits := DontCare
+//          axi.b.bits := DontCare
+//        case ActualDirection.Output =>
+//          axi.aw.bits := DontCare
+//          axi.ar.bits := DontCare
+//          axi.w.bits := DontCare
+//        case _ => throw new Exception("Unknown AXI port direction")
+//      }
+//    })
+//    Nil
+//  }
+//})
 class WithTieOffL2FBusAXI extends OverrideIOBinder({
+
   (system: CanHaveSlaveAXI4Port with BaseSubsystem) => {
-    system.l2_frontend_bus_axi4.foreach(axi => {
-      axi.tieoff()
-      experimental.DataMirror.directionOf(axi.ar.ready) match {
-        case ActualDirection.Input =>
-          axi.r.bits := DontCare
-          axi.b.bits := DontCare
-        case ActualDirection.Output =>
-          axi.aw.bits := DontCare
-          axi.ar.bits := DontCare
-          axi.w.bits := DontCare
-        case _ => throw new Exception("Unknown AXI port direction")
+    val peiTuples = AddIOCells.axi4(system.l2_frontend_bus_axi4, system.l2FrontendAXI4Node)
+    val harnessFn = (th: chipyard.TestHarness) => {
+      peiTuples.zipWithIndex.map { case ((port, edge, ios), i) =>
+        port := DontCare // tieoff doesn't completely tie-off, for some reason
+        port.tieoff()
       }
-    })
-    Nil
+      Nil
+    }
+    Seq((peiTuples.map(_._1), peiTuples.flatMap(_._3), Some(harnessFn)))
+    
   }
 })
+
+
 
 class WithTiedOffDebug extends OverrideIOBinder({
   (system: HasPeripheryDebugModuleImp) => {
