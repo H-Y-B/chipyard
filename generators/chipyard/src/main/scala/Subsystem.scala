@@ -66,9 +66,9 @@ trait HasChipyardTiles extends HasTiles
           LazyModule(new ArianeTile(a, crossing, PriorityMuxHartIdFromSeq(arianeTileParams), logicalTreeNode))
         }
       }
-      connectMasterPortsToSBus(tile, crossing)
+      connectMasterPortsToSBus(tile, crossing)//将tile连接到  系统总线sbus
       connectSlavePortsToCBus(tile, crossing)
-      connectInterrupts(tile, debugOpt, clintOpt, plicOpt)
+      connectInterrupts(tile, debugOpt, clintOpt, plicOpt)//将各种中断（debugOpt、clintOpt、plicOpt）与tile相联
 
       tile
     }
@@ -87,6 +87,11 @@ trait HasChipyardTilesModuleImp extends HasTilesModuleImp
   val outer: HasChipyardTiles
 }
 
+
+
+
+
+
 class Subsystem(implicit p: Parameters) extends BaseSubsystem
   with HasChipyardTiles
 {
@@ -101,7 +106,7 @@ class SubsystemModuleImp[+L <: Subsystem](_outer: L) extends BaseSubsystemModule
 {
   tile_inputs.zip(outer.hartIdList).foreach { case(wire, i) =>
     wire.hartid := i.U
-    wire.reset_vector := global_reset_vector
+    wire.reset_vector := global_reset_vector//reset pc传入tile
   }
 
   // create file with boom params
