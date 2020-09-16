@@ -23,10 +23,10 @@ import freechips.rocketchip.util.{DontTouch}
  */
 class System(implicit p: Parameters) extends Subsystem
   with HasAsyncExtInterrupts
-  with CanHaveMasterAXI4MemPort
-  with CanHaveMasterAXI4MMIOPort
-  with CanHaveSlaveAXI4Port
-  with HasPeripheryBootROM
+  with CanHaveMasterAXI4MemPort  //连到mbus
+  with CanHaveMasterAXI4MMIOPort //连到sbus
+  with CanHaveSlaveAXI4Port      //连到fbus
+  with HasPeripheryBootROM       //连到cbus
 {
   override lazy val module = new SystemModule(this)
 }
